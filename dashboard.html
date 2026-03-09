@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>RetailML · UCI Online Retail Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+/* ── Variables ─────────────────────────────────────────────────── */
+:root{
+  --plum:#561d46; --mauve:#ae6a97; --blush:#eca8bb; --cream:#f8f0ea;
+  --plum-d:#3a0f2e; --plum-g:rgba(86,29,70,0.62);
+  --bdr:rgba(236,168,187,0.20); --bdr-h:rgba(236,168,187,0.60);
+  --txt:rgba(248,240,234,0.80); --r:22px;
+  --ease:cubic-bezier(0.23,1,0.32,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter',sans-serif; color:var(--cream); overflow-x:hidden;
+  background-color:var(--plum);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(174,106,151,0.22) 0%, transparent 70%),
+    radial-gradient(var(--mauve) 1px, transparent 1px),
+    radial-gradient(rgba(236,168,187,0.45) 1px, transparent 1px);
+  background-size:100% 100%, 22px 22px, 22px 22px;
+  background-position:0 0, 0 0, 11px 11px;
+  background-attachment:fixed;
+}
+img{display:block;}
+
+/* ── Skeleton ───────────────────────────────────────────────────── */
+#sk{
+  position:fixed; inset:0; z-index:9999;
+  background:var(--plum-d); display:flex; flex-direction:column;
+  gap:1.4rem; padding:5rem 3.5rem 2rem;
+  transition:opacity 0.55s var(--ease), visibility 0.55s;
+}
+#sk.gone{opacity:0; visibility:hidden;}
+.sk{
+  border-radius:14px;
+  background:linear-gradient(90deg,rgba(174,106,151,0.12) 25%,rgba(174,106,151,0.32) 50%,rgba(174,106,151,0.12) 75%);
+  background-size:300% 100%; animation:shim 1.5s infinite;
+}
+.sk-row{display:flex;gap:1.2rem;}
+.sk-row .sk{flex:1;}
+@keyframes shim{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ── Nav ────────────────────────────────────────────────────────── */
+nav{
+  position:sticky; top:0; z-index:100; height:60px;
+  background:rgba(86,29,70,0.84); backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--bdr);
+  display:flex; align-items:center; padding:0 3.5rem; gap:2rem;
+}
+.nav-logo{
+  font-family:'Syne',sans-serif; font-weight:800; font-size:1.15rem;
+  background:linear-gradient(135deg,var(--blush),var(--cream));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; flex-shrink:0; margin-right:0.5rem;
+}
+.nav-links{display:flex; gap:0.15rem; flex:1;}
+.nav-links a{
+  font-family:'Syne',sans-serif; font-size:0.8rem; font-weight:500;
+  color:var(--txt); text-decoration:none; padding:0.42rem 0.9rem;
+  border-radius:8px; position:relative; transition:color 0.25s;
+  white-space:nowrap;
+}
+.nav-links a::after{
+  content:''; position:absolute; bottom:0; left:50%; width:0; height:2px;
+  background:var(--blush); border-radius:2px; box-shadow:0 0 8px var(--blush);
+  transition:all 0.35s var(--ease); transform:translateX(-50%);
+}
+.nav-links a:hover,
+.nav-links a.active{color:var(--cream);}
+.nav-links a:hover::after,
+.nav-links a.active::after{width:60%;}
+.nav-badge{
+  flex-shrink:0; font-size:0.67rem; letter-spacing:0.04em;
+  background:rgba(236,168,187,0.12); border:1px solid var(--bdr);
+  color:var(--blush); padding:0.28rem 0.85rem; border-radius:999px;
+}
+
+/* ── Card ───────────────────────────────────────────────────────── */
+.card{
+  background:var(--plum-g); backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--bdr); border-radius:var(--r);
+  transition:transform 0.4s var(--ease), box-shadow 0.4s var(--ease), border-color 0.35s;
+  position:relative; overflow:hidden;
+}
+.card:hover{
+  transform:translateY(-5px) scale(1.013);
+  box-shadow:0 22px 64px rgba(236,168,187,0.22);
+  border-color:var(--bdr-h);
+}
+/* ripple */
+.card{cursor:default;}
+.rpl{
+  position:absolute; border-radius:50%; pointer-events:none;
+  transform:scale(0); background:rgba(236,168,187,0.22);
+  animation:rpl-a 0.6s linear forwards;
+}
+@keyframes rpl-a{to{transform:scale(5);opacity:0;}}
+
+/* ── Reveal ─────────────────────────────────────────────────────── */
+.reveal{
+  opacity:0; transform:translateY(28px);
+  transition:opacity 0.7s var(--ease), transform 0.7s var(--ease);
+}
+.reveal.vis{opacity:1; transform:translateY(0);}
+
+/* ── Section ────────────────────────────────────────────────────── */
+section{padding:3.5rem 3.5rem;}
+.sec-lbl{
+  font-family:'Syne',sans-serif; font-size:0.67rem; font-weight:600;
+  letter-spacing:0.18em; text-transform:uppercase; color:var(--blush);
+  margin-bottom:0.55rem;
+}
+.sec-h2{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(1.45rem,2.4vw,2rem);
+  font-weight:700; color:var(--cream); line-height:1.15;
+  margin-bottom:1.8rem;
+}
+.grad-text{
+  background:linear-gradient(135deg,var(--blush),var(--cream));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* ── Chart card ─────────────────────────────────────────────────── */
+.cc{padding:1.6rem;}
+.cc h3{
+  font-family:'Syne',sans-serif; font-size:0.9rem; font-weight:600;
+  color:var(--blush); margin-bottom:1.2rem;
+}
+.ch{position:relative;}
+
+/* ══ S1 KPI ══════════════════════════════════════════════════════ */
+#overview{padding-top:3rem;}
+.kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1.1rem;}
+.kpi-card{
+  border-radius:var(--r); border:1px solid rgba(236,168,187,0.28);
+  padding:1.9rem 1.6rem 1.7rem;
+  background:linear-gradient(135deg,var(--plum-d),var(--plum),var(--mauve),var(--blush),var(--mauve),var(--plum-d));
+  background-size:400% 400%; animation:holo 7s ease infinite;
+  position:relative; overflow:hidden;
+  transition:transform 0.4s var(--ease), box-shadow 0.4s;
+}
+.kpi-card:hover{
+  transform:translateY(-7px) scale(1.025);
+  box-shadow:0 26px 72px rgba(236,168,187,0.32);
+}
+@keyframes holo{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+.kpi-card::before{
+  content:''; position:absolute; top:-55px; right:-55px;
+  width:130px; height:130px; border-radius:50%;
+  background:radial-gradient(circle,rgba(248,240,234,0.09) 0%,transparent 70%);
+  pointer-events:none;
+}
+.kpi-icon{width:32px;height:32px;margin-bottom:1rem;opacity:0.65;}
+.kpi-num{
+  font-family:'Syne',sans-serif; font-size:clamp(1.85rem,2.8vw,2.7rem);
+  font-weight:800; line-height:1;
+  background:linear-gradient(135deg,var(--blush),var(--cream));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.kpi-arrow{
+  display:inline-flex;align-items:center;gap:0.25rem;
+  font-size:0.73rem;color:rgba(248,240,234,0.5);margin-top:0.3rem;
+}
+.kpi-lbl{
+  margin-top:0.65rem; font-size:0.77rem; font-weight:500;
+  color:rgba(248,240,234,0.58); letter-spacing:0.04em;
+}
+
+/* ══ S2 SEGMENTS ═════════════════════════════════════════════════ */
+#segments{padding-top:1rem;}
+.seg-top{display:grid;grid-template-columns:2fr 1fr;gap:1.1rem;margin-bottom:1.1rem;}
+.seg-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem;}
+.seg-card{
+  border-radius:var(--r); border:1px solid var(--bdr);
+  background:var(--plum-g); backdrop-filter:blur(16px);
+  overflow:hidden;
+  transition:transform 0.4s var(--ease), box-shadow 0.4s, border-color 0.35s;
+}
+.seg-card:hover{
+  transform:translateY(-7px) scale(1.022);
+  box-shadow:0 22px 60px rgba(236,168,187,0.25);
+  border-color:var(--bdr-h);
+}
+.seg-stripe{height:5px;}
+.seg-body{padding:1.35rem 1.25rem 1.15rem;}
+.seg-name{font-family:'Syne',sans-serif;font-size:0.98rem;font-weight:700;color:var(--cream);margin-bottom:0.9rem;}
+.seg-row2{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.38rem;}
+.seg-k{font-size:0.7rem;color:rgba(248,240,234,0.48);letter-spacing:0.03em;}
+.seg-v{font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:600;color:var(--cream);}
+.seg-tip{
+  margin-top:0.95rem;padding-top:0.8rem;
+  border-top:1px solid rgba(236,168,187,0.1);
+  font-size:0.71rem;font-style:italic;
+  color:rgba(248,240,234,0.45);line-height:1.5;
+}
+
+/* ══ S3 ALGORITHMS ═══════════════════════════════════════════════ */
+#algorithms{padding-top:1rem;}
+.algo-wrap{
+  background-image:radial-gradient(rgba(248,240,234,0.055) 1px,transparent 1px);
+  background-size:18px 18px; border-radius:var(--r);
+  padding:1.6rem; border:1px solid var(--bdr);
+}
+.algo-top{display:grid;grid-template-columns:3fr 2fr;gap:1.1rem;margin-bottom:1.1rem;}
+.mtable{width:100%;border-collapse:collapse;}
+.mtable th{
+  font-family:'Syne',sans-serif;font-size:0.7rem;font-weight:600;
+  color:var(--blush);letter-spacing:0.1em;text-transform:uppercase;
+  padding:0.55rem 0.75rem;text-align:left;
+  border-bottom:1px solid rgba(236,168,187,0.18);
+}
+.mtable td{
+  font-size:0.8rem;color:var(--txt);
+  padding:0.6rem 0.75rem;
+  border-bottom:1px solid rgba(248,240,234,0.055);
+}
+.mtable tr:last-child td{border-bottom:none;}
+.badge{
+  display:inline-block;font-size:0.6rem;font-weight:700;
+  font-family:'Syne',sans-serif;letter-spacing:0.08em;
+  background:linear-gradient(135deg,var(--mauve),var(--blush));
+  color:var(--plum-d);padding:0.12rem 0.5rem;border-radius:999px;
+  vertical-align:middle;margin-left:0.35rem;
+}
+.winner{
+  margin-top:1.1rem; padding:1.3rem 1.8rem; border-radius:18px;
+  background:rgba(86,29,70,0.5);
+  position:relative; overflow:hidden;
+}
+.winner::before{
+  content:''; position:absolute; inset:0; border-radius:18px; z-index:0;
+  background:linear-gradient(90deg,transparent,rgba(236,168,187,0.35),transparent);
+  background-size:250% 100%; animation:glow-sweep 3s linear infinite;
+}
+@keyframes glow-sweep{
+  0%{background-position:150% 0}
+  100%{background-position:-150% 0}
+}
+.winner-inner{position:relative;z-index:1;}
+.winner-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--cream);}
+.winner-sub{font-size:0.78rem;color:rgba(248,240,234,0.52);margin-top:0.28rem;}
+
+/* ══ S4 REDUCTION ════════════════════════════════════════════════ */
+#reduction{padding-top:1rem;}
+.red-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;}
+.bar-row{margin-bottom:1.1rem;}
+.bar-label{display:flex;justify-content:space-between;font-size:0.78rem;margin-bottom:0.45rem;}
+.bar-label span:first-child{color:var(--cream);font-weight:500;}
+.bar-label span:last-child{color:var(--blush);font-family:'Syne',sans-serif;font-weight:700;}
+.bar-track{background:rgba(248,240,234,0.08);border-radius:999px;height:10px;overflow:hidden;}
+.bar-fill{
+  height:100%;border-radius:999px;
+  background:linear-gradient(90deg,var(--mauve),var(--blush));
+  width:0%; transition:width 1.2s var(--ease);
+}
+.callout{
+  margin-top:1.4rem; padding:1rem 1.2rem; border-radius:14px;
+  background:rgba(236,168,187,0.1);
+  border:1px solid rgba(236,168,187,0.22);
+  font-size:0.8rem; color:var(--cream); line-height:1.55;
+}
+.callout strong{font-family:'Syne',sans-serif;color:var(--blush);}
+
+/* ══ S5 REVENUE ══════════════════════════════════════════════════ */
+#revenue{padding-top:1rem;}
+.rev-card{padding:1.8rem 1.6rem;}
+.rev-card h3{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:600;color:var(--blush);margin-bottom:1.4rem;}
+
+/* ══ S6 BASKET ════════════════════════════════════════════════════ */
+#basket{padding-top:1rem;}
+/* wave divider */
+.wave-div{
+  width:100%;height:60px;margin-bottom:0;
+  background:none; position:relative; overflow:hidden;
+}
+.wave-div svg{position:absolute;bottom:0;left:0;width:100%;height:100%;}
+.basket-top{display:grid;grid-template-columns:2fr 1fr;gap:1.1rem;margin-bottom:1.1rem;}
+.insight-card{
+  padding:1.6rem; display:flex; flex-direction:column; justify-content:center;
+}
+.ins-product{
+  font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;
+  color:var(--cream);margin-bottom:0.35rem;
+}
+.ins-lift{
+  font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;
+  background:linear-gradient(135deg,var(--blush),var(--cream));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  margin-bottom:0.5rem;
+}
+.ins-sub{font-size:0.78rem;color:rgba(248,240,234,0.52);line-height:1.55;}
+.rules-table{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.rules-table th{
+  font-family:'Syne',sans-serif;font-size:0.67rem;font-weight:600;
+  color:var(--blush);letter-spacing:0.09em;text-transform:uppercase;
+  padding:0.55rem 0.8rem;text-align:left;
+  border-bottom:1px solid rgba(236,168,187,0.18);
+}
+.rules-table td{
+  padding:0.55rem 0.8rem;color:var(--txt);
+  border-bottom:1px solid rgba(248,240,234,0.05);
+}
+.rules-table tr:nth-child(even) td{background:rgba(86,29,70,0.3);}
+.rules-table tr:last-child td{border-bottom:none;}
+.arrow-glyph{color:var(--blush);font-weight:600;}
+
+/* ══ S7 RECO ══════════════════════════════════════════════════════ */
+#insights{padding-top:1rem;}
+.reco-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.1rem;}
+.flip-wrap{height:280px;perspective:1100px;}
+.flip-inner{
+  width:100%;height:100%;
+  position:relative; transform-style:preserve-3d;
+  transition:transform 0.75s var(--ease);
+}
+.flip-wrap:hover .flip-inner{transform:rotateY(180deg);}
+.flip-front,.flip-back{
+  position:absolute;inset:0;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  border-radius:var(--r); border:1px solid var(--bdr);
+  background:var(--plum-g); backdrop-filter:blur(16px);
+  display:flex; flex-direction:column; justify-content:center;
+  padding:2rem;
+}
+.flip-back{
+  transform:rotateY(180deg);
+  background:rgba(174,106,151,0.35);
+  border-color:rgba(236,168,187,0.35);
+}
+.flip-icon{margin-bottom:1.2rem;opacity:0.75;}
+.flip-seg{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:var(--cream);margin-bottom:0.4rem;}
+.flip-hint{font-size:0.75rem;color:rgba(248,240,234,0.45);}
+.flip-strat{font-size:0.82rem;color:var(--cream);line-height:1.65;}
+.flip-action{
+  margin-top:1.1rem;font-size:0.76rem;font-weight:600;
+  color:var(--blush);font-family:'Syne',sans-serif;
+}
+
+/* ══ FOOTER ═══════════════════════════════════════════════════════ */
+footer{
+  padding:2.5rem 3.5rem;
+  border-top:1px solid rgba(236,168,187,0.18);
+  text-align:center;
+}
+.foot-title{font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:600;color:var(--blush);margin-bottom:0.6rem;}
+.foot-names{display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;}
+.foot-names span{font-size:0.75rem;color:rgba(248,240,234,0.42);}
+
+/* ══ RESPONSIVE ════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  nav{padding:0 1.2rem;gap:1rem;}
+  .nav-links a{display:none;}
+  section{padding:2.5rem 1.2rem;}
+  .kpi-grid,.seg-row,.reco-grid{grid-template-columns:1fr 1fr;}
+  .seg-top,.algo-top,.basket-top,.red-grid{grid-template-columns:1fr;}
+}
+@media(max-width:480px){
+  .kpi-grid,.seg-row,.reco-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── SKELETON ─────────────────────────────────────────────────── -->
+<div id="sk">
+  <div class="sk" style="height:46px;width:220px;"></div>
+  <div class="sk-row">
+    <div class="sk" style="height:130px;"></div>
+    <div class="sk" style="height:130px;"></div>
+    <div class="sk" style="height:130px;"></div>
+    <div class="sk" style="height:130px;"></div>
+  </div>
+  <div class="sk-row">
+    <div class="sk" style="height:280px;flex:2;"></div>
+    <div class="sk" style="height:280px;flex:1;"></div>
+  </div>
+  <div class="sk-row">
+    <div class="sk" style="height:160px;"></div>
+    <div class="sk" style="height:160px;"></div>
+    <div class="sk" style="height:160px;"></div>
+    <div class="sk" style="height:160px;"></div>
+  </div>
+  <div class="sk" style="height:200px;"></div>
+</div>
+
+<!-- ── NAV ──────────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-logo">RetailML</div>
+  <div class="nav-links">
+    <a href="#overview"   class="active">Overview</a>
+    <a href="#segments">Segments</a>
+    <a href="#algorithms">Algorithms</a>
+    <a href="#reduction">Reduction</a>
+    <a href="#revenue">Revenue</a>
+    <a href="#basket">Basket</a>
+    <a href="#insights">Insights</a>
+  </div>
+  <span class="nav-badge">UCI Online Retail Dataset</span>
+</nav>
+
+<main>
+
+<!-- ══ S1 OVERVIEW ════════════════════════════════════════════════ -->
+<section id="overview">
+  <div class="sec-lbl">Executive Overview</div>
+  <div class="sec-h2">Machine Learning <span class="grad-text">Pipeline Results</span></div>
+
+  <div class="kpi-grid">
+    <!-- Total Customers -->
+    <div class="kpi-card reveal">
+      <svg class="kpi-icon" viewBox="0 0 32 32" fill="none">
+        <circle cx="12" cy="10" r="5" stroke="#f8f0ea" stroke-width="1.5"/>
+        <path d="M4 26c0-5.523 3.582-9 8-9s8 3.477 8 9" stroke="#f8f0ea" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="22" cy="11" r="3.5" stroke="#eca8bb" stroke-width="1.5"/>
+        <path d="M26 26c0-4-2-7-4-7" stroke="#eca8bb" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <div class="kpi-num" data-target="4191" data-fmt="int">0</div>
+      <div class="kpi-arrow">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M2 5l4-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Active accounts
+      </div>
+      <div class="kpi-lbl">Total Customers</div>
+    </div>
+    <!-- Total Revenue -->
+    <div class="kpi-card reveal" style="transition-delay:0.1s">
+      <svg class="kpi-icon" viewBox="0 0 32 32" fill="none">
+        <rect x="4" y="8" width="24" height="16" rx="3" stroke="#f8f0ea" stroke-width="1.5"/>
+        <circle cx="16" cy="16" r="4" stroke="#eca8bb" stroke-width="1.5"/>
+        <line x1="4" y1="12" x2="28" y2="12" stroke="#eca8bb" stroke-width="1" stroke-opacity="0.4"/>
+        <line x1="4" y1="20" x2="28" y2="20" stroke="#eca8bb" stroke-width="1" stroke-opacity="0.4"/>
+      </svg>
+      <div class="kpi-num" data-target="4318862" data-fmt="gbp">£0</div>
+      <div class="kpi-arrow">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M2 5l4-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        13-month period
+      </div>
+      <div class="kpi-lbl">Total Revenue</div>
+    </div>
+    <!-- Products -->
+    <div class="kpi-card reveal" style="transition-delay:0.2s">
+      <svg class="kpi-icon" viewBox="0 0 32 32" fill="none">
+        <path d="M6 8h20l-2 14H8L6 8Z" stroke="#f8f0ea" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M12 8V6a4 4 0 0 1 8 0v2" stroke="#eca8bb" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="12" y1="15" x2="20" y2="15" stroke="#eca8bb" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <div class="kpi-num" data-target="3392" data-fmt="int">0</div>
+      <div class="kpi-arrow">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M2 5l4-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Unique SKUs
+      </div>
+      <div class="kpi-lbl">Products</div>
+    </div>
+    <!-- Transactions -->
+    <div class="kpi-card reveal" style="transition-delay:0.3s">
+      <svg class="kpi-icon" viewBox="0 0 32 32" fill="none">
+        <path d="M8 10h16M8 16h10M8 22h6" stroke="#f8f0ea" stroke-width="1.5" stroke-linecap="round"/>
+        <rect x="4" y="5" width="24" height="22" rx="3" stroke="#f8f0ea" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="5" fill="rgba(236,168,187,0.2)" stroke="#eca8bb" stroke-width="1.5"/>
+        <path d="M20 22l1.5 1.5L24 20" stroke="#eca8bb" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="kpi-num" data-target="338151" data-fmt="int">0</div>
+      <div class="kpi-arrow">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M2 5l4-3 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Post-cleanup rows
+      </div>
+      <div class="kpi-lbl">Transactions</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S2 SEGMENTS ════════════════════════════════════════════════ -->
+<section id="segments">
+  <div class="sec-lbl">Customer Segmentation</div>
+  <div class="sec-h2">RFM-Based <span class="grad-text">Customer Segments</span></div>
+
+  <!-- scatter bg decoration -->
+  <div style="position:relative;">
+    <svg style="position:absolute;top:-30px;right:-20px;opacity:0.055;pointer-events:none;z-index:0;" width="220" height="180" viewBox="0 0 220 180">
+      <g fill="#f8f0ea">
+        <circle cx="30" cy="140" r="6"/><circle cx="55" cy="110" r="4"/><circle cx="80" cy="125" r="7"/>
+        <circle cx="100" cy="90" r="5"/><circle cx="130" cy="100" r="9"/><circle cx="155" cy="70" r="4"/>
+        <circle cx="170" cy="85" r="6"/><circle cx="195" cy="55" r="5"/><circle cx="210" cy="40" r="8"/>
+        <circle cx="50" cy="60" r="5"/><circle cx="70" cy="40" r="4"/><circle cx="90" cy="155" r="3"/>
+        <circle cx="145" cy="148" r="5"/><circle cx="175" cy="135" r="4"/><circle cx="200" cy="115" r="6"/>
+      </g>
+    </svg>
+
+  <div class="seg-top reveal">
+    <div class="card cc" style="min-height:300px;">
+      <h3>Segment Distribution</h3>
+      <div class="ch" style="height:260px;"><canvas id="segDonut"></canvas></div>
+    </div>
+    <div class="card cc" style="min-height:300px;">
+      <h3>Revenue Contribution</h3>
+      <div class="ch" style="height:260px;"><canvas id="segRevBar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="seg-row">
+    <!-- Champions -->
+    <div class="seg-card reveal">
+      <div class="seg-stripe" style="background:linear-gradient(90deg,#c9a84c,#e6c97a);"></div>
+      <div class="seg-body">
+        <div class="seg-name">Champions</div>
+        <div class="seg-row2"><span class="seg-k">Customers</span><span class="seg-v">1,215</span></div>
+        <div class="seg-row2"><span class="seg-k">Share</span><span class="seg-v">29.0%</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Spend</span><span class="seg-v">£3,620</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Orders</span><span class="seg-v">12.9</span></div>
+        <div class="seg-row2"><span class="seg-k">Recency</span><span class="seg-v">19.9 days</span></div>
+        <div class="seg-tip">VIP treatment — early access, loyalty tiers, and referral programs. Revenue drivers — protect at all cost.</div>
+      </div>
+    </div>
+    <!-- Loyal -->
+    <div class="seg-card reveal" style="transition-delay:0.1s">
+      <div class="seg-stripe" style="background:linear-gradient(90deg,#5b8a5e,#7dba82);"></div>
+      <div class="seg-body">
+        <div class="seg-name">Loyal Customers</div>
+        <div class="seg-row2"><span class="seg-k">Customers</span><span class="seg-v">1,227</span></div>
+        <div class="seg-row2"><span class="seg-k">Share</span><span class="seg-v">29.3%</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Spend</span><span class="seg-v">£1,847</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Orders</span><span class="seg-v">6.7</span></div>
+        <div class="seg-row2"><span class="seg-k">Recency</span><span class="seg-v">45.2 days</span></div>
+        <div class="seg-tip">Upsell opportunity — premium bundles and frequency incentives can graduate these to Champions.</div>
+      </div>
+    </div>
+    <!-- At Risk -->
+    <div class="seg-card reveal" style="transition-delay:0.2s">
+      <div class="seg-stripe" style="background:linear-gradient(90deg,#c97b3a,#e8a060);"></div>
+      <div class="seg-body">
+        <div class="seg-name">At Risk</div>
+        <div class="seg-row2"><span class="seg-k">Customers</span><span class="seg-v">981</span></div>
+        <div class="seg-row2"><span class="seg-k">Share</span><span class="seg-v">23.4%</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Spend</span><span class="seg-v">£892</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Orders</span><span class="seg-v">3.2</span></div>
+        <div class="seg-row2"><span class="seg-k">Recency</span><span class="seg-v">145.6 days</span></div>
+        <div class="seg-tip">Re-engagement critical — personalized "We miss you" offers with time-limited discount codes.</div>
+      </div>
+    </div>
+    <!-- Lost -->
+    <div class="seg-card reveal" style="transition-delay:0.3s">
+      <div class="seg-stripe" style="background:linear-gradient(90deg,#8b3a3a,#b56060);"></div>
+      <div class="seg-body">
+        <div class="seg-name">Lost</div>
+        <div class="seg-row2"><span class="seg-k">Customers</span><span class="seg-v">768</span></div>
+        <div class="seg-row2"><span class="seg-k">Share</span><span class="seg-v">18.3%</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Spend</span><span class="seg-v">£312</span></div>
+        <div class="seg-row2"><span class="seg-k">Avg Orders</span><span class="seg-v">1.8</span></div>
+        <div class="seg-row2"><span class="seg-k">Recency</span><span class="seg-v">287.4 days</span></div>
+        <div class="seg-tip">Win-back campaign with significant incentive — if no response after 2 attempts, deprioritize spend.</div>
+      </div>
+    </div>
+  </div>
+  </div><!-- end relative -->
+</section>
+
+<!-- ══ S3 ALGORITHMS ══════════════════════════════════════════════ -->
+<section id="algorithms">
+  <div class="sec-lbl">Model Selection</div>
+  <div class="sec-h2">Algorithm <span class="grad-text">Comparison</span></div>
+
+  <div class="algo-wrap reveal" style="background-color:rgba(86,29,70,0.45);">
+    <div class="algo-top">
+      <!-- Grouped bar chart -->
+      <div class="card cc" style="border:none;background:rgba(86,29,70,0.5);">
+        <h3>Clustering Performance Metrics</h3>
+        <div class="ch" style="height:260px;"><canvas id="algoBar"></canvas></div>
+      </div>
+      <!-- Distance metrics table -->
+      <div class="card cc" style="border:none;background:rgba(86,29,70,0.5);">
+        <h3>Distance Metric Comparison</h3>
+        <table class="mtable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Silhouette</th>
+              <th>DB Index</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color:var(--cream);">Euclidean</strong><span class="badge">BEST</span></td>
+              <td style="color:var(--blush);font-weight:600;">0.4343</td>
+              <td style="color:var(--blush);font-weight:600;">0.7294</td>
+            </tr>
+            <tr>
+              <td>Minkowski</td>
+              <td>0.4012</td>
+              <td>0.8056</td>
+            </tr>
+            <tr>
+              <td>Manhattan</td>
+              <td>0.3891</td>
+              <td>0.8234</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout" style="margin-top:1.2rem;">
+          <strong>K-Medoids Validation</strong><br/>
+          Euclidean distance consistently outperforms alternatives across all three internal validation metrics — confirming geometrically spherical cluster structures.
+        </div>
+      </div>
+    </div>
+
+    <!-- Winner banner -->
+    <div class="winner">
+      <div class="winner-inner" style="display:flex;align-items:center;gap:1.5rem;">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" style="flex-shrink:0;opacity:0.85;">
+          <circle cx="18" cy="18" r="16" stroke="#eca8bb" stroke-width="1.5"/>
+          <path d="M11 18l5 5 9-9" stroke="#eca8bb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <div class="winner-title">K-Means + Euclidean Distance selected as optimal approach</div>
+          <div class="winner-sub">Silhouette Score: 0.4343 &nbsp;·&nbsp; Davies-Bouldin: 0.7294 &nbsp;·&nbsp; Calinski-Harabasz: 5,662.3 &nbsp;·&nbsp; K = 4 clusters</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S4 REDUCTION ════════════════════════════════════════════════ -->
+<section id="reduction">
+  <div class="sec-lbl">Dimensionality Reduction</div>
+  <div class="sec-h2">PCA <span class="grad-text">&amp; LDA</span> Analysis</div>
+
+  <div class="red-grid">
+    <!-- PCA -->
+    <div class="card cc reveal">
+      <h3>Principal Component Analysis (PCA)</h3>
+      <div class="bar-row">
+        <div class="bar-label"><span>PC1 — Frequency dominant</span><span>71.78%</span></div>
+        <div class="bar-track"><div class="bar-fill" data-w="71.78"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>PC2 — Recency dominant</span><span>20.97%</span></div>
+        <div class="bar-track"><div class="bar-fill" data-w="20.97"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>PC3 — Monetary</span><span>7.25%</span></div>
+        <div class="bar-track"><div class="bar-fill" data-w="7.25"></div></div>
+      </div>
+      <div class="callout">
+        <strong>92.75%</strong> variance captured in just 2 components — confirms that customer behaviour compresses cleanly into 2 dimensions.
+      </div>
+    </div>
+    <!-- LDA -->
+    <div class="card cc reveal" style="transition-delay:0.15s">
+      <h3>Linear Discriminant Analysis (LDA)</h3>
+      <div class="bar-row">
+        <div class="bar-label"><span>LD1 — Primary separator</span><span>95.39%</span></div>
+        <div class="bar-track"><div class="bar-fill" data-w="95.39"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-label"><span>LD2 — Secondary axis</span><span>4.60%</span></div>
+        <div class="bar-track"><div class="bar-fill" data-w="4.60"></div></div>
+      </div>
+      <div class="callout" style="margin-top:1.95rem;">
+        <strong>LD1 alone</strong> separates all 4 customer segments — a single supervised axis captures 95.39% of between-class variance.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S5 REVENUE ══════════════════════════════════════════════════ -->
+<section id="revenue">
+  <div class="sec-lbl">Revenue Timeline</div>
+  <div class="sec-h2">Monthly Revenue <span class="grad-text">Dec 2010 — Dec 2011</span></div>
+
+  <div class="card rev-card reveal">
+    <h3>Revenue Trend — Peak: November 2011</h3>
+    <div class="ch" style="height:300px;position:relative;">
+      <canvas id="revLine"></canvas>
+      <!-- peak annotation -->
+      <div id="peakBubble" style="
+        position:absolute;top:8px;right:90px;
+        background:rgba(86,29,70,0.92);
+        border:1px solid rgba(236,168,187,0.45);
+        border-radius:12px;padding:0.5rem 0.9rem;
+        font-family:'Syne',sans-serif;font-size:0.75rem;
+        color:var(--blush);white-space:nowrap;
+        box-shadow:0 4px 20px rgba(236,168,187,0.2);
+        display:none;
+      ">
+        &#9670; Peak: £647,874 — Nov 2011
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- wave divider -->
+<div class="wave-div" style="margin:0 3.5rem;">
+  <svg viewBox="0 0 1200 60" preserveAspectRatio="none" fill="none">
+    <path d="M0 30 Q200 5 400 30 Q600 55 800 30 Q1000 5 1200 30" stroke="rgba(236,168,187,0.22)" stroke-width="1.5" fill="none"/>
+    <path d="M0 40 Q250 15 500 40 Q750 65 1000 40 Q1100 28 1200 40" stroke="rgba(174,106,151,0.12)" stroke-width="1" fill="none"/>
+  </svg>
+</div>
+
+<!-- ══ S6 BASKET ════════════════════════════════════════════════════ -->
+<section id="basket">
+  <div class="sec-lbl">Market Basket Analysis</div>
+  <div class="sec-h2">Association Rules <span class="grad-text">— Apriori Algorithm</span></div>
+
+  <div class="basket-top">
+    <div class="card cc reveal" style="min-height:300px;">
+      <h3>Top 5 Rules by Lift Value</h3>
+      <div class="ch" style="height:260px;"><canvas id="liftBar"></canvas></div>
+    </div>
+    <div class="card insight-card reveal" style="transition-delay:0.15s">
+      <div style="margin-bottom:1.2rem;">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="opacity:0.7;margin-bottom:0.8rem;">
+          <path d="M6 6h20v4l-8 8v8l-4-2v-6L6 10V6Z" stroke="#eca8bb" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="24" cy="8" r="3" stroke="#f8f0ea" stroke-width="1.5"/>
+        </svg>
+        <div class="ins-product">Regency Teacup Bundle</div>
+      </div>
+      <div class="ins-lift" id="liftNum">21.23x</div>
+      <div class="ins-sub">Strongest product association found across all 4 segments — customers buying Regency Teacups almost always purchase the matching Cake Plate &amp; Saucer set.</div>
+    </div>
+  </div>
+
+  <div class="card reveal" style="transition-delay:0.1s;overflow-x:auto;">
+    <div style="padding:1.6rem;">
+      <h3 style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:600;color:var(--blush);margin-bottom:1.2rem;">Global Association Rules</h3>
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th>Antecedent</th>
+            <th></th>
+            <th>Consequent</th>
+            <th>Support</th>
+            <th>Confidence</th>
+            <th>Lift</th>
+          </tr>
+        </thead>
+        <tbody id="rulesBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S7 INSIGHTS ════════════════════════════════════════════════ -->
+<section id="insights">
+  <div class="sec-lbl">Strategic Recommendations</div>
+  <div class="sec-h2">Business <span class="grad-text">Action Plan</span></div>
+  <p style="font-size:0.8rem;color:rgba(248,240,234,0.45);margin-bottom:1.8rem;">Hover each card to reveal the full strategy.</p>
+
+  <div class="reco-grid">
+    <!-- Champions -->
+    <div class="flip-wrap reveal">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <svg class="flip-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <polygon points="20,5 24,16 36,16 27,23 30,35 20,28 10,35 13,23 4,16 16,16" stroke="#e6c97a" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          <div class="flip-seg">Champions</div>
+          <div class="flip-hint" style="margin-bottom:0.5rem;">1,215 customers &nbsp;·&nbsp; 29.0%</div>
+          <div class="flip-hint">Hover to see strategy</div>
+        </div>
+        <div class="flip-back">
+          <div class="flip-seg" style="margin-bottom:1rem;">Champions Strategy</div>
+          <div class="flip-strat">These customers drive 56.9% of revenue. They shop most recently, most frequently, and spend the most. Treat them as brand partners, not just customers.</div>
+          <div class="flip-action">&#8594; Launch VIP loyalty tier &nbsp;·&nbsp; Early product access &nbsp;·&nbsp; Referral rewards &nbsp;·&nbsp; Dedicated account manager for top 50</div>
+        </div>
+      </div>
+    </div>
+    <!-- Loyal -->
+    <div class="flip-wrap reveal" style="transition-delay:0.1s">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <svg class="flip-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <path d="M20 8C14 8 8 13 8 20s6 12 12 12 12-6 12-12S26 8 20 8Z" stroke="#7dba82" stroke-width="1.5"/>
+            <path d="M14 20l4 4 8-8" stroke="#7dba82" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="flip-seg">Loyal Customers</div>
+          <div class="flip-hint" style="margin-bottom:0.5rem;">1,227 customers &nbsp;·&nbsp; 29.3%</div>
+          <div class="flip-hint">Hover to see strategy</div>
+        </div>
+        <div class="flip-back">
+          <div class="flip-seg" style="margin-bottom:1rem;">Loyal Strategy</div>
+          <div class="flip-strat">Consistent buyers with solid frequency. They are the most likely candidates to be elevated into Champions with the right nudge at the right time.</div>
+          <div class="flip-action">&#8594; Premium bundle upsells &nbsp;·&nbsp; Frequency milestone rewards &nbsp;·&nbsp; Cross-sell using association rules (Lift &gt;10)</div>
+        </div>
+      </div>
+    </div>
+    <!-- At Risk -->
+    <div class="flip-wrap reveal" style="transition-delay:0.2s">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <svg class="flip-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <path d="M20 8v15M20 29v2" stroke="#e8a060" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6 32L20 8l14 24H6Z" stroke="#e8a060" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          <div class="flip-seg">At Risk</div>
+          <div class="flip-hint" style="margin-bottom:0.5rem;">981 customers &nbsp;·&nbsp; 23.4%</div>
+          <div class="flip-hint">Hover to see strategy</div>
+        </div>
+        <div class="flip-back">
+          <div class="flip-seg" style="margin-bottom:1rem;">At Risk Strategy</div>
+          <div class="flip-strat">They bought well before but have gone quiet. 145-day average recency signals drift. Intervention now costs far less than re-acquisition later.</div>
+          <div class="flip-action">&#8594; "We miss you" email sequence &nbsp;·&nbsp; 15% win-back discount &nbsp;·&nbsp; Product recommendations based on past purchases</div>
+        </div>
+      </div>
+    </div>
+    <!-- Lost -->
+    <div class="flip-wrap reveal" style="transition-delay:0.3s">
+      <div class="flip-inner">
+        <div class="flip-front">
+          <svg class="flip-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="12" stroke="#b56060" stroke-width="1.5"/>
+            <path d="M15 15l10 10M25 15l-10 10" stroke="#b56060" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div class="flip-seg">Lost</div>
+          <div class="flip-hint" style="margin-bottom:0.5rem;">768 customers &nbsp;·&nbsp; 18.3%</div>
+          <div class="flip-hint">Hover to see strategy</div>
+        </div>
+        <div class="flip-back">
+          <div class="flip-seg" style="margin-bottom:1rem;">Lost Strategy</div>
+          <div class="flip-strat">287-day recency and only 1.8 avg orders — likely churned. Limited spend justified. Run a final win-back with strong incentive; if no conversion, sunset and reallocate budget.</div>
+          <div class="flip-action">&#8594; Single final win-back offer (25% off) &nbsp;·&nbsp; 2-touch maximum &nbsp;·&nbsp; Suppress from paid retargeting if no response</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ═══════════════════════════════════════════════════════ -->
+<footer>
+  <div class="foot-title">Woxsen University &nbsp;·&nbsp; Machine Learning Project &nbsp;·&nbsp; 2025</div>
+  <div class="foot-names">
+    <span>Name 1</span>
+    <span>Name 2</span>
+    <span>Name 3</span>
+    <span>Name 4</span>
+    <span>Name 5</span>
+  </div>
+</footer>
+
+</main>
+
+<script>
+/* ── Helpers ─────────────────────────────────────────────────────── */
+const $ = (s,p=document) => p.querySelector(s);
+const $$ = (s,p=document) => [...p.querySelectorAll(s)];
+const C = {
+  plum:'#561d46', mauve:'#ae6a97', blush:'#eca8bb', cream:'#f8f0ea',
+  plumD:'#3a0f2e', txt:'rgba(248,240,234,0.80)',
+  grid:'rgba(248,240,234,0.08)'
+};
+
+/* ── Skeleton off ────────────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  setTimeout(() => { $('#sk').classList.add('gone'); }, 1200);
+});
+
+/* ── Ripple ──────────────────────────────────────────────────────── */
+$$('.card, .kpi-card, .seg-card').forEach(card => {
+  card.addEventListener('click', e => {
+    const r = document.createElement('div');
+    r.className = 'rpl';
+    const rect = card.getBoundingClientRect();
+    const sz = Math.max(rect.width, rect.height) * 1.5;
+    r.style.cssText = `width:${sz}px;height:${sz}px;left:${e.clientX-rect.left-sz/2}px;top:${e.clientY-rect.top-sz/2}px;`;
+    card.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  });
+});
+
+/* ── Nav active ──────────────────────────────────────────────────── */
+const navLinks = $$('.nav-links a');
+const sections = ['overview','segments','algorithms','reduction','revenue','basket','insights'];
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#'+e.target.id));
+    }
+  });
+}, {rootMargin:'-40% 0px -55% 0px'});
+sections.forEach(id => { const el=document.getElementById(id); if(el) observer.observe(el); });
+
+/* ── Reveal on scroll ────────────────────────────────────────────── */
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach((e,i) => {
+    if (e.isIntersecting) {
+      e.target.classList.add('vis');
+      revObs.unobserve(e.target);
+    }
+  });
+}, {threshold:0.12});
+$$('.reveal').forEach(el => revObs.observe(el));
+
+/* ── Count-up ────────────────────────────────────────────────────── */
+function fmtNum(n, fmt) {
+  if (fmt === 'gbp') {
+    if (n >= 1e6) return '£' + (n/1e6).toFixed(1) + 'M';
+    return '£' + Math.round(n).toLocaleString();
+  }
+  return Math.round(n).toLocaleString();
+}
+function countUp(el) {
+  const target = +el.dataset.target;
+  const fmt    = el.dataset.fmt;
+  const dur    = 2000;
+  const start  = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const e = 1 - Math.pow(1-p, 4);
+    el.textContent = fmtNum(target * e, fmt);
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const kpiObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      $$('.kpi-num', e.target.closest('section')).forEach(countUp);
+      kpiObs.unobserve(e.target);
+    }
+  });
+}, {threshold:0.4});
+$$('.kpi-card').forEach(el => kpiObs.observe(el));
+
+/* ── Progress bars ───────────────────────────────────────────────── */
+const barObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      $$('.bar-fill', e.target).forEach(b => {
+        b.style.width = b.dataset.w + '%';
+      });
+      barObs.unobserve(e.target);
+    }
+  });
+}, {threshold:0.3});
+$$('#reduction .card').forEach(el => barObs.observe(el));
+
+/* ── Chart defaults ──────────────────────────────────────────────── */
+Chart.defaults.color = C.cream;
+Chart.defaults.font.family = "'Syne', sans-serif";
+const GRID = {color:C.grid, drawBorder:false};
+const TOOLTIP = {
+  backgroundColor:'rgba(58,15,46,0.94)',
+  borderColor:'rgba(236,168,187,0.35)',
+  borderWidth:1,
+  titleColor:C.blush,
+  bodyColor:C.cream,
+  padding:10,
+  cornerRadius:10,
+};
+const ANIM = {duration:1500, easing:'easeInOutQuart'};
+
+/* ── Chart init on scroll ────────────────────────────────────────── */
+const charts = {};
+let initialized = {};
+function initChart(id) {
+  if (initialized[id]) return;
+  initialized[id] = true;
+
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  if (id === 'segDonut') {
+    charts[id] = new Chart(ctx, {
+      type:'doughnut',
+      data:{
+        labels:['Champions','Loyal','At Risk','Lost'],
+        datasets:[{
+          data:[1215,1227,981,768],
+          backgroundColor:['rgba(201,168,76,0.85)','rgba(91,138,94,0.85)','rgba(201,123,58,0.85)','rgba(139,58,58,0.85)'],
+          borderColor:['rgba(230,201,122,0.9)','rgba(125,186,130,0.9)','rgba(232,160,96,0.9)','rgba(181,96,96,0.9)'],
+          borderWidth:2, hoverOffset:10,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation:ANIM,
+        plugins:{
+          legend:{position:'bottom', labels:{padding:16, font:{size:11}, color:C.txt}},
+          tooltip:{...TOOLTIP}
+        },
+        cutout:'68%',
+      }
+    });
+  }
+
+  if (id === 'segRevBar') {
+    charts[id] = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels:['Champions','Loyal','At Risk','Lost'],
+        datasets:[{
+          label:'Avg Revenue (£)',
+          data:[3620,1847,892,312],
+          backgroundColor:['rgba(201,168,76,0.7)','rgba(91,138,94,0.7)','rgba(201,123,58,0.7)','rgba(139,58,58,0.7)'],
+          borderColor:['rgba(230,201,122,0.9)','rgba(125,186,130,0.9)','rgba(232,160,96,0.9)','rgba(181,96,96,0.9)'],
+          borderWidth:1.5, borderRadius:8,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation:ANIM,
+        plugins:{legend:{display:false}, tooltip:{...TOOLTIP}},
+        scales:{
+          x:{grid:{display:false}, ticks:{color:C.txt, font:{size:10}}},
+          y:{grid:GRID, ticks:{color:C.txt, callback:v=>'£'+v.toLocaleString()}}
+        }
+      }
+    });
+  }
+
+  if (id === 'algoBar') {
+    charts[id] = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels:['K-Means','DBSCAN','Hierarchical'],
+        datasets:[
+          {
+            label:'Silhouette Score',
+            data:[0.4343,0.3980,0.3638],
+            backgroundColor:'rgba(236,168,187,0.75)',
+            borderColor:'rgba(236,168,187,1)',
+            borderWidth:1.5, borderRadius:6,
+          },
+          {
+            label:'DB Index (lower=better)',
+            data:[0.7294,0.8920,0.9812],
+            backgroundColor:'rgba(174,106,151,0.65)',
+            borderColor:'rgba(174,106,151,1)',
+            borderWidth:1.5, borderRadius:6,
+          },
+          {
+            label:'CH Score (÷1000)',
+            data:[5.662,3.241,4.128],
+            backgroundColor:'rgba(248,240,234,0.25)',
+            borderColor:'rgba(248,240,234,0.6)',
+            borderWidth:1.5, borderRadius:6,
+          }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation:ANIM,
+        plugins:{
+          legend:{position:'top', labels:{padding:14, font:{size:10}, color:C.txt}},
+          tooltip:{...TOOLTIP}
+        },
+        scales:{
+          x:{grid:{display:false}, ticks:{color:C.txt}},
+          y:{grid:GRID, ticks:{color:C.txt}}
+        }
+      }
+    });
+  }
+
+  if (id === 'revLine') {
+    /* gradient fill */
+    const gr = ctx.createLinearGradient(0, 0, 0, 300);
+    gr.addColorStop(0,'rgba(236,168,187,0.45)');
+    gr.addColorStop(1,'rgba(236,168,187,0.00)');
+    charts[id] = new Chart(ctx, {
+      type:'line',
+      data:{
+        labels:['Dec 10','Jan 11','Feb 11','Mar 11','Apr 11','May 11','Jun 11','Jul 11','Aug 11','Sep 11','Oct 11','Nov 11','Dec 11'],
+        datasets:[{
+          label:'Revenue (£)',
+          data:[95478,82954,75062,116345,98721,132456,145823,124571,143252,298475,421894,647874,435957],
+          borderColor:C.blush,
+          borderWidth:2.5,
+          pointRadius:4,
+          pointHoverRadius:7,
+          pointBackgroundColor:C.blush,
+          pointBorderColor:'rgba(58,15,46,0.8)',
+          pointBorderWidth:2,
+          fill:true,
+          backgroundColor:gr,
+          tension:0.45,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        animation:{...ANIM,
+          onComplete: () => { $('#peakBubble').style.display='block'; }
+        },
+        plugins:{
+          legend:{display:false},
+          tooltip:{...TOOLTIP, callbacks:{label:c=>'£'+c.parsed.y.toLocaleString()}}
+        },
+        scales:{
+          x:{grid:{display:false}, ticks:{color:C.txt, font:{size:10}}},
+          y:{grid:GRID, ticks:{color:C.txt, callback:v=>'£'+(v/1000).toFixed(0)+'k'}}
+        }
+      }
+    });
+  }
+
+  if (id === 'liftBar') {
+    charts[id] = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels:[
+          'Regency Teacup→Cake Plate',
+          'Pink Regency→Roses',
+          'Roses Regency→Pink',
+          'Napkins→Doily',
+          'Spotty Tin→Bag',
+        ],
+        datasets:[{
+          label:'Lift',
+          data:[21.23,18.45,16.89,14.32,12.67],
+          backgroundColor:(ctx2)=>{
+            const g = ctx2.chart.ctx.createLinearGradient(0,0,300,0);
+            g.addColorStop(0,C.plum); g.addColorStop(1,C.blush);
+            return g;
+          },
+          borderRadius:6,
+          borderSkipped:false,
+        }]
+      },
+      options:{
+        indexAxis:'y',
+        responsive:true, maintainAspectRatio:false,
+        animation:ANIM,
+        plugins:{
+          legend:{display:false},
+          tooltip:{...TOOLTIP, callbacks:{label:c=>'Lift: '+c.parsed.x.toFixed(2)}}
+        },
+        scales:{
+          x:{grid:GRID, ticks:{color:C.txt}},
+          y:{grid:{display:false}, ticks:{color:C.txt, font:{size:10}}}
+        }
+      }
+    });
+  }
+}
+
+/* Observe chart sections */
+const chartMap = {
+  'overview':  [],
+  'segments':  ['segDonut','segRevBar'],
+  'algorithms':['algoBar'],
+  'revenue':   ['revLine'],
+  'basket':    ['liftBar'],
+};
+const chartObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const ids = chartMap[e.target.id] || [];
+      ids.forEach(initChart);
+    }
+  });
+}, {threshold:0.15});
+Object.keys(chartMap).forEach(id => {
+  const el = document.getElementById(id);
+  if (el) chartObs.observe(el);
+});
+
+/* ── Rules table ──────────────────────────────────────────────────── */
+const rules = [
+  ['Regency Teacup, Saucer','Regency Cake Plate','0.031','0.782','21.23'],
+  ['Pink Regency Teacup','Roses Regency Teacup','0.028','0.741','18.45'],
+  ['Roses Regency Teacup','Pink Regency Teacup','0.028','0.709','16.89'],
+  ['Set/6 Napkins Retrospot','Doily Retrospot','0.025','0.623','14.32'],
+  ['Spotty Tin','Spotty Bag','0.034','0.598','12.67'],
+  ['Cake Cases Dolly Print','Jumbo Bag Dolly Print','0.042','0.571','11.45'],
+  ['Heart T-Light Holder','Star T-Light Holder','0.038','0.548','10.23'],
+  ['Wooden Picture Frame','Hanging Heart T-Light','0.029','0.512','9.87'],
+  ['French Style Tin','Retrospot Tin','0.032','0.489','9.12'],
+  ['Alarm Clock Baking','Timer Baking','0.027','0.467','8.94'],
+];
+const tbody = $('#rulesBody');
+rules.forEach((row, i) => {
+  const tr = document.createElement('tr');
+  tr.style.opacity = '0';
+  tr.style.transform = 'translateX(-12px)';
+  tr.style.transition = `opacity 0.5s ${i*0.07}s ease, transform 0.5s ${i*0.07}s ease`;
+  tr.innerHTML = `
+    <td style="color:var(--cream);font-weight:500;">${row[0]}</td>
+    <td class="arrow-glyph">&#8594;</td>
+    <td>${row[1]}</td>
+    <td style="color:var(--blush);">${row[2]}</td>
+    <td style="color:var(--blush);">${row[3]}</td>
+    <td style="color:var(--cream);font-family:'Syne',sans-serif;font-weight:700;">${row[4]}</td>
+  `;
+  tbody.appendChild(tr);
+});
+const tableObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      $$('tr', tbody).forEach(tr => { tr.style.opacity='1'; tr.style.transform='translateX(0)'; });
+      tableObs.unobserve(e.target);
+    }
+  });
+}, {threshold:0.1});
+if (tbody.parentElement) tableObs.observe(tbody.parentElement);
+
+/* ── Magnetic hover on seg cards ──────────────────────────────────── */
+$$('.seg-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left - rect.width/2) / (rect.width/2);
+    const y = (e.clientY - rect.top - rect.height/2) / (rect.height/2);
+    card.style.transform = `translateY(-7px) scale(1.022) translate(${x*5}px, ${y*3}px)`;
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
+  });
+});
+
+/* ── Parallax bg ──────────────────────────────────────────────────── */
+window.addEventListener('scroll', () => {
+  document.body.style.backgroundPosition = `0 ${window.scrollY * 0.3}px, 0 ${window.scrollY * 0.3}px, 11px ${11 + window.scrollY * 0.3}px`;
+}, {passive:true});
+</script>
+</body>
+</html>

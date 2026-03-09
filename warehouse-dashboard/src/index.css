@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+  background: radial-gradient(ellipse at center, #000000 0%, #1a1a1a 100%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* Layer 1 — subtle grid lines (holographic poster feel) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Layer 2 — constellation dot scatter */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px),
+    radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+  background-size: 200px 200px;
+  background-position: 0 0, 100px 100px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Holographic gradient text — animated foil palette ─── */
+.holo-text {
+  background: linear-gradient(
+    135deg,
+    #C9A0CB  0%,
+    #9FCEEE 18%,
+    #FFFFFF 32%,
+    #F4BBD7 46%,
+    #C6B5D8 60%,
+    #FCFDFE 74%,
+    #F5CCE7 87%,
+    #A98BD1 100%
+  );
+  background-size: 300% 300%;
+  animation: holoShift 6s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Chrome metallic text ─── */
+.chrome-text {
+  background: linear-gradient(
+    180deg,
+    #ffffff  0%,
+    #e0e0e0 25%,
+    #a0a0a0 50%,
+    #e0e0e0 75%,
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Glass card with iridescent border ─── */
+.glass-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.23,1,0.32,1);
+}
+
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255,105,180,0.6),
+    rgba(100,149,237,0.6),
+    rgba(72,209,204,0.5),
+    rgba(147,112,219,0.6),
+    rgba(255,105,180,0.6)
+  );
+  background-size: 300% 300%;
+  animation: holoShift 6s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.glass-card:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 20px 60px rgba(167,139,250,0.15);
+}
+
+/* ─── Aurora Background ─── */
+.aurora-container {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.aurora-layer-1,
+.aurora-layer-2 {
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+  will-change: background-position;
+}
+
+.aurora-layer-1 {
+  background-image: repeating-linear-gradient(
+    100deg,
+    #C9A0CB 10%, #9FCEEE 16%, #FFFFFF 22%,
+    #F4BBD7 28%, #C6B5D8 34%, #FCFDFE 40%,
+    #F5CCE7 46%, #A98BD1 52%, #C9A0CB 58%
+  );
+  background-size: 300% 200%;
+  filter: blur(24px);
+  opacity: 0.12;
+  animation: aurora 18s linear infinite;
+  z-index: 0;
+}
+
+.aurora-layer-2 {
+  background-image: repeating-linear-gradient(
+    100deg,
+    #A98BD1 10%, #C9A0CB 17%, #9FCEEE 25%,
+    #F4BBD7 32%, #F5CCE7 40%, #C6B5D8 47%,
+    #FCFDFE 54%, #A98BD1 62%
+  );
+  background-size: 200% 100%;
+  filter: blur(18px);
+  opacity: 0.07;
+  animation: aurora 26s linear infinite reverse;
+  z-index: 1;
+}
+
+@keyframes aurora {
+  from { background-position: 50% 50%; }
+  to   { background-position: 350% 50%; }
+}
+
+/* ─── Keyframes ─── */
+@keyframes holoShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-20px); }
+}
+
+@keyframes sparkle-fade {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 0.8; }
+}
+
+@keyframes bounce-chevron {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(8px); }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.4); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,0.7); }
+
+::selection { background: rgba(167,139,250,0.3); color: #fff; }

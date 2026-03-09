@@ -1,0 +1,25 @@
+# Data files (too large for git)
+*.xlsx
+*.zip
+
+# Frontend build artifacts
+warehouse-dashboard/node_modules
+warehouse-dashboard/dist
+warehouse-dashboard/dist-ssr
+warehouse-dashboard/.vite
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
